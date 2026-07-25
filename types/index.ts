@@ -64,7 +64,7 @@ export interface ChangeEvent {
 export interface WebsiteSnapshot {
   id: string;
   competitor_id: string;
-  user_id: string;
+  workspace_id: string;
   scan_id: string | null;
   url: string;
   status_code: number | null;
@@ -74,6 +74,7 @@ export interface WebsiteSnapshot {
   word_count: number;
   page_load_ms: number | null;
   content_hash: string | null;
+  screenshot_url: string | null;
   changed: boolean;
   data_source?: string | null;
   metadata?: Record<string, unknown> | null;
