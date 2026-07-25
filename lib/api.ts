@@ -192,16 +192,52 @@ export async function fetchWebsiteSnapshots(competitorId?: string, limit = 20): 
 
 /* ----------------------------- SEO Keywords ----------------------------- */
 
-export async function fetchSeoKeywords(competitorId?: string, limit = 100): Promise<SeoKeyword[]> {
-  let q = supabase
-    .from('seo_keywords')
-    .select('*, competitor:competitors(name)')
-    .order('captured_at', { ascending: false })
+export async function fetchSeoKeywords(competitorId?: string, limit = 100): Promise<any[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+  
+  const { data: wsData } = await supabase
+    .from("workspace_members")
+    .select("workspace_id")
+    .eq("user_id", user.id)
+    .single();
+    
+  if (!wsData) return [];
+  
+  const { data, error } = await supabase
+    .from("tracked_keywords")
+    .select("*")
+    .eq("workspace_id", wsData.workspace_id)
+    .order("created_at", { ascending: false })
     .limit(limit);
-  if (competitorId) q = q.eq('competitor_id', competitorId);
-  const { data, error } = await q;
+    
   if (error) throw error;
-  return (data ?? []) as SeoKeyword[];
+  return data || [];
+}
+
+export async function createSeoKeyword(keyword: string): Promise<any> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+  
+  const { data: wsData } = await supabase
+    .from("workspace_members")
+    .select("workspace_id")
+    .eq("user_id", user.id)
+    .single();
+    
+  if (!wsData) throw new Error("No workspace found");
+    
+  const { data, error } = await supabase
+    .from("tracked_keywords")
+    .insert({
+      workspace_id: wsData.workspace_id,
+      keyword
+    })
+    .select()
+    .single();
+    
+  if (error) throw error;
+  return data;
 }
 
 /* ----------------------------- Social Posts ----------------------------- */

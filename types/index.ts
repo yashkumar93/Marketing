@@ -363,3 +363,21 @@ export interface AdCreative {
 export interface NewCompetitorInputV2 extends NewCompetitorInput {
   pricing_url?: string;
 }
+
+export interface TrackedKeyword {
+  id: string;
+  workspace_id: string;
+  keyword: string;
+  created_at: string;
+}
+
+export interface RankSnapshot {
+  id: string;
+  keyword_id: string;
+  workspace_id: string;
+  domain: string;
+  rank: number | null;
+  search_volume: number | null;
+  captured_at: string;
+  created_at: string;
+}
