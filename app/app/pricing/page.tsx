@@ -220,6 +220,14 @@ export default function () {
                     <div className="text-sm mt-2">
                       <span className="text-muted-foreground">Plans extracted: </span>
                       <span className="font-medium">{snap.plans.length}</span>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {snap.plans.map((p, i) => (
+                           <Badge key={i} variant="secondary" className="font-normal">
+                             <strong className="mr-1">{p.name}:</strong> 
+                             {p.price != null ? formatCurrency(p.price, p.currency) + (p.billingPeriod === "annual" ? "/yr" : "/mo") : "Custom"}
+                           </Badge>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 ))}

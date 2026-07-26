@@ -107,6 +107,8 @@ export interface SocialPost {
   post_url: string | null;
   content: string | null;
   engagement: { likes: number; comments: number; shares: number };
+  engagement_rate?: number | null;
+  theme_tags?: string[] | null;
   sentiment: Sentiment;
   posted_at: string | null;
   data_source?: string | null;

@@ -9,6 +9,7 @@ import type {
   SocialPost,
   PricingItem,
   Advertisement,
+  AdCreative,
   Alert,
   AiInsight,
   Report,
@@ -57,7 +58,8 @@ export async function fetchCompetitor(id: string): Promise<Competitor | null> {
 }
 
 export async function createCompetitor(input: NewCompetitorInput): Promise<Competitor> {
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { user }, error: userErr } = await supabase.auth.getUser();
+  console.log("createCompetitor user:", user, userErr);
   const insertData: Record<string, any> = {
     name: input.name,
     website: input.website,
@@ -67,8 +69,11 @@ export async function createCompetitor(input: NewCompetitorInput): Promise<Compe
     tracked_keywords: input.tracked_keywords ?? [],
   };
   if (user?.id) {
-    const { data: wm } = await supabase.from("workspace_members").select("workspace_id").eq("user_id", user.id).limit(1).single(); if (wm) insertData.workspace_id = wm.workspace_id;
+    const { data: wm, error: wmErr } = await supabase.from("workspace_members").select("workspace_id").eq("user_id", user.id).limit(1).single(); 
+    console.log("createCompetitor wm:", wm, wmErr);
+    if (wm) insertData.workspace_id = wm.workspace_id;
   }
+  console.log("createCompetitor insertData:", insertData);
   const { data, error } = await supabase
     .from('competitors')
     .insert(insertData)
@@ -76,6 +81,7 @@ export async function createCompetitor(input: NewCompetitorInput): Promise<Compe
     .single();
 
   if (error) {
+    console.error("createCompetitor insert error:", error);
     throw new Error(error.message || error.details || error.hint || 'Failed to create competitor record');
   }
   return data as Competitor;
@@ -100,33 +106,60 @@ export async function deleteCompetitor(id: string): Promise<void> {
   if (error) throw error;
 }
 
+export async function startCrawl(competitorId: string) {
+  const { data, error } = await supabase.functions.invoke('scan-competitor', {
+    body: { competitorId }
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function triggerDigest() {
+  const { data, error } = await supabase.functions.invoke('digest-alerts');
+  if (error) throw error;
+  return data;
+}
+
 export async function scanCompetitor(competitorId: string): Promise<{ scanId: string; summary: string }> {
   try {
-    const token = await getAccessToken();
-    const res = await fetch(`${SUPABASE_URL}/functions/v1/scan-competitor`, {
-      method: 'POST',
-      headers: authHeaders(token),
-      body: JSON.stringify({ competitorId }),
+    const { data, error } = await supabase.functions.invoke('scan-competitor', {
+      body: { competitorId },
     });
-    if (res.ok) {
-      const body = await res.json();
-      if (body && typeof body.scanId === 'string') {
-        return { scanId: body.scanId, summary: body.summary ?? '' };
-      }
+
+    if (!error && data && (data.scanId || data.summary)) {
+      return {
+        scanId: data.scanId ?? competitorId,
+        summary: data.summary ?? 'Scan completed.',
+      };
+    }
+    if (error) {
+      console.warn('Edge function scan returned error, falling back:', error);
     }
   } catch (err) {
-    console.warn('Edge function scan failed or not deployed, running fallback database scan:', err);
+    console.warn('Edge function scan failed, running fallback database scan:', err);
   }
 
   const { data: userRes } = await supabase.auth.getUser();
   const userId = userRes?.user?.id;
   const now = new Date().toISOString();
 
+  let workspaceId: string | undefined;
+  if (userId) {
+    const { data: wm } = await supabase
+      .from('workspace_members')
+      .select('workspace_id')
+      .eq('user_id', userId)
+      .limit(1)
+      .single();
+    if (wm) workspaceId = wm.workspace_id;
+  }
+
   const { data: scan } = await supabase
     .from('scans')
     .insert({
       competitor_id: competitorId,
       user_id: userId,
+      workspace_id: workspaceId,
       status: 'completed',
       scan_type: 'full',
       changes_detected: 1,
@@ -270,16 +303,16 @@ export async function fetchPricingItems(competitorId?: string, limit = 100): Pro
 
 /* ----------------------------- Advertisements ----------------------------- */
 
-export async function fetchAdvertisements(competitorId?: string, limit = 50): Promise<Advertisement[]> {
+export async function fetchAdvertisements(competitorId?: string, limit = 50): Promise<AdCreative[]> {
   let q = supabase
-    .from('advertisements')
+    .from('ad_creatives')
     .select('*, competitor:competitors(name)')
     .order('last_seen_at', { ascending: false })
     .limit(limit);
   if (competitorId) q = q.eq('competitor_id', competitorId);
   const { data, error } = await q;
   if (error) throw error;
-  return (data ?? []) as Advertisement[];
+  return (data ?? []) as AdCreative[];
 }
 
 /* ----------------------------- Alerts ----------------------------- */
@@ -439,7 +472,7 @@ export async function sendChatMessage(
 ): Promise<{ answer: string; sources: ChatMessageSource[] }> {
   console.info('[AI Service] sendChatMessage', { competitorId, questionLength: question.length });
   const token = await getAccessToken();
-  const res = await fetch(`${SUPABASE_URL}/functions/v1/rag-chat`, {
+  const res = await fetch(`/api/chat`, {
     method: 'POST',
     headers: authHeaders(token),
     body: JSON.stringify({ question, competitorId }),
@@ -611,14 +644,14 @@ export async function generateKeywordGapReport(competitorIds?: string[]): Promis
 
 export async function discoverPages(website: string): Promise<{ pages: Array<{ url: string; page_type: string }> }> {
   try {
-    const token = await getAccessToken();
-    const res = await fetch(`${SUPABASE_URL}/functions/v1/discover-pages`, {
-      method: 'POST',
-      headers: authHeaders(token),
-      body: JSON.stringify({ website }),
+    const { data, error } = await supabase.functions.invoke('discover-pages', {
+      body: { website },
     });
-    if (res.ok) {
-      return await res.json();
+    if (!error && data?.pages) {
+      return data;
+    }
+    if (error) {
+      console.warn('Discover pages edge function error:', error);
     }
   } catch (err) {
     console.warn('Discover pages edge function fallback:', err);

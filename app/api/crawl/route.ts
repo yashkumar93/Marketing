@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import puppeteer from "puppeteer";
+import { chromium } from "playwright";
 import { createClient } from "@supabase/supabase-js";
 
 export async function POST(req: Request) {
@@ -11,20 +11,21 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing url or page_id" }, { status: 400 });
     }
 
-    // Launch browser
-    const browser = await puppeteer.launch({
+    // Launch Playwright chromium browser
+    const browser = await chromium.launch({
       headless: true,
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
 
-    const page = await browser.newPage();
-    await page.setViewport({ width: 1280, height: 800 });
-    
-    // Disguise as normal browser
-    await page.setUserAgent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36");
+    const context = await browser.newContext({
+      viewport: { width: 1280, height: 800 },
+      userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    });
 
-    // Wait until there are no more than 2 network connections for at least 500ms
-    await page.goto(url, { waitUntil: "networkidle2", timeout: 30000 });
+    const page = await context.newPage();
+
+    // Navigate and wait for network idle
+    await page.goto(url, { waitUntil: "networkidle", timeout: 30000 });
     
     // Give single-page apps a tiny bit extra time to render DOM
     await new Promise(resolve => setTimeout(resolve, 2000));

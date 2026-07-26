@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { User, Sliders, Sparkles, Loader2, LogOut, Bell, Shield, Key } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useCompetitorList } from '@/hooks/useCompetitorList';
-import { updateCompetitor } from '@/lib/api';
+import { updateCompetitor, triggerDigest } from '@/lib/api';
 import { PageHeader } from '@/components/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -28,6 +28,7 @@ export default function () {
   const [notifEmails, setNotifEmails] = useState(true);
   const [notifHighAlerts, setNotifHighAlerts] = useState(true);
   const [notifWeekly, setNotifWeekly] = useState(true);
+  const [triggeringDigest, setTriggeringDigest] = useState(false);
 
   async function handleSignOut() {
     setSigningOut(true);
@@ -54,6 +55,24 @@ export default function () {
 
   function handleSaveNotif() {
     toast({ title: 'Notification preferences saved' });
+  }
+
+  async function handleTriggerDigest() {
+    setTriggeringDigest(true);
+    try {
+      const res = await triggerDigest();
+      if (res?.status === 'skipped') {
+        toast({ title: 'No pending alerts', description: 'There are no unread low/medium alerts for your workspace.' });
+      } else if (res?.status === 'success') {
+        toast({ title: 'Digest Dispatched', description: `Successfully processed ${res.alertsProcessed} alerts and sent ${res.emailsSent} emails.` });
+      } else {
+        toast({ title: 'Triggered Digest', description: JSON.stringify(res) });
+      }
+    } catch (err) {
+      toast({ title: 'Failed to trigger digest', description: err instanceof Error ? err.message : undefined, variant: 'destructive' });
+    } finally {
+      setTriggeringDigest(false);
+    }
   }
 
   return (
@@ -215,7 +234,13 @@ export default function () {
               </div>
               <Switch checked={notifWeekly} onCheckedChange={setNotifWeekly} />
             </div>
-            <Button onClick={handleSaveNotif} className="mt-2">Save preferences</Button>
+            <div className="flex items-center gap-4 mt-2">
+              <Button onClick={handleSaveNotif}>Save preferences</Button>
+              <Button onClick={handleTriggerDigest} disabled={triggeringDigest} variant="secondary">
+                {triggeringDigest ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Bell className="mr-2 h-4 w-4" />}
+                Trigger Digest Now
+              </Button>
+            </div>
           </CardContent>
         </Card>
 

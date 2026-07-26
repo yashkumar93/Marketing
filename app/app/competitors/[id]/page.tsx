@@ -21,6 +21,12 @@ import {
   ChevronRight,
   Trash2,
   Pencil,
+  ThumbsUp,
+  ThumbsDown,
+  Filter,
+  CheckCircle2,
+  AlertTriangle,
+  Info,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -119,6 +125,14 @@ export default function () {
   const [editWebsite, setEditWebsite] = useState('');
   const [editIndustry, setEditIndustry] = useState('');
   const [editDesc, setEditDesc] = useState('');
+
+  // Filters state for tabs
+  const [timelinePillarFilter, setTimelinePillarFilter] = useState<string>('all');
+  const [timelineSeverityFilter, setTimelineSeverityFilter] = useState<string>('all');
+  const [socialPlatformFilter, setSocialPlatformFilter] = useState<string>('all');
+  const [adPlatformFilter, setAdPlatformFilter] = useState<string>('all');
+  const [adFormatFilter, setAdFormatFilter] = useState<string>('all');
+  const [feedbackMap, setFeedbackMap] = useState<Record<string, 'helpful' | 'not_helpful'>>({});
 
   async function handleScan() {
     if (!id) return;
@@ -293,12 +307,30 @@ export default function () {
         <TabsList className="flex w-full flex-wrap justify-start gap-1 h-auto p-1">
           <TabsTrigger value="overview" className="gap-1.5"><Activity className="h-4 w-4" /> Overview</TabsTrigger>
           <TabsTrigger value="website" className="gap-1.5"><Globe className="h-4 w-4" /> Website</TabsTrigger>
-          <TabsTrigger value="seo" className="gap-1.5"><Search className="h-4 w-4" /> SEO</TabsTrigger>
-          <TabsTrigger value="social" className="gap-1.5"><Share2 className="h-4 w-4" /> Social</TabsTrigger>
-          <TabsTrigger value="pricing" className="gap-1.5"><DollarSign className="h-4 w-4" /> Pricing</TabsTrigger>
-          <TabsTrigger value="advertising" className="gap-1.5"><Megaphone className="h-4 w-4" /> Advertising</TabsTrigger>
-          <TabsTrigger value="insights" className="gap-1.5"><Sparkles className="h-4 w-4" /> AI Insights</TabsTrigger>
-          <TabsTrigger value="timeline" className="gap-1.5"><Activity className="h-4 w-4" /> Timeline</TabsTrigger>
+          <TabsTrigger value="seo" className="gap-1.5">
+            <Search className="h-4 w-4" /> SEO
+            {detail.seoKeywords.length > 0 && <Badge variant="secondary" className="ml-1 text-[10px] py-0 px-1.5">{detail.seoKeywords.length}</Badge>}
+          </TabsTrigger>
+          <TabsTrigger value="social" className="gap-1.5">
+            <Share2 className="h-4 w-4" /> Social
+            {detail.socialPosts.length > 0 && <Badge variant="secondary" className="ml-1 text-[10px] py-0 px-1.5">{detail.socialPosts.length}</Badge>}
+          </TabsTrigger>
+          <TabsTrigger value="pricing" className="gap-1.5">
+            <DollarSign className="h-4 w-4" /> Pricing
+            {detail.pricingItems.length > 0 && <Badge variant="secondary" className="ml-1 text-[10px] py-0 px-1.5">{detail.pricingItems.length}</Badge>}
+          </TabsTrigger>
+          <TabsTrigger value="advertising" className="gap-1.5">
+            <Megaphone className="h-4 w-4" /> Advertising
+            {detail.advertisements.length > 0 && <Badge variant="secondary" className="ml-1 text-[10px] py-0 px-1.5">{detail.advertisements.length}</Badge>}
+          </TabsTrigger>
+          <TabsTrigger value="insights" className="gap-1.5">
+            <Sparkles className="h-4 w-4" /> AI Insights
+            {detail.insights.length > 0 && <Badge variant="secondary" className="ml-1 text-[10px] py-0 px-1.5">{detail.insights.length}</Badge>}
+          </TabsTrigger>
+          <TabsTrigger value="timeline" className="gap-1.5">
+            <Activity className="h-4 w-4" /> Timeline
+            {detail.events.length > 0 && <Badge variant="secondary" className="ml-1 text-[10px] py-0 px-1.5">{detail.events.length}</Badge>}
+          </TabsTrigger>
         </TabsList>
 
         {/* Overview */}
@@ -447,6 +479,36 @@ export default function () {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Keyword Gap Analysis Section */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-accent" /> Keyword Gap Opportunities
+                  </CardTitle>
+                  <CardDescription>High-value keywords where this competitor ranks in top 20</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {detail.seoKeywords.filter(k => (k.rank ?? 99) <= 20 || k.opportunity === 'high').slice(0, 6).map((gap) => (
+                      <div key={gap.id} className="rounded-lg border p-3 bg-card/50 hover:bg-card transition-colors">
+                        <div className="flex items-center justify-between">
+                          <p className="font-medium text-sm truncate">{gap.keyword}</p>
+                          <Badge variant="outline" className="text-xs">Rank #{gap.rank ?? '—'}</Badge>
+                        </div>
+                        <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+                          <span>Vol: {gap.search_volume ?? 0}/mo</span>
+                          <span>Diff: {gap.difficulty ?? 0}/100</span>
+                        </div>
+                        <Badge variant="secondary" className="mt-2 text-[10px] bg-accent/15 text-accent border-none">
+                          High Gap Value
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
               <Card>
                 <CardContent className="p-0">
                   <Table>
@@ -500,29 +562,49 @@ export default function () {
 
         {/* Social */}
         <TabsContent value="social" className="space-y-4">
+          {/* Platform Filter Bar */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-muted-foreground flex items-center gap-1 font-medium">
+              <Filter className="h-3.5 w-3.5" /> Platform:
+            </span>
+            {['all', 'linkedin', 'twitter', 'instagram', 'facebook', 'youtube'].map((platform) => (
+              <Button
+                key={platform}
+                variant={socialPlatformFilter === platform ? 'default' : 'outline'}
+                size="sm"
+                className="h-7 text-xs capitalize"
+                onClick={() => setSocialPlatformFilter(platform)}
+              >
+                {platform}
+              </Button>
+            ))}
+          </div>
+
           {detail.socialPosts.length ? (
-            <div className="grid gap-3">
-              {detail.socialPosts.map((p) => (
-                <Card key={p.id}>
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <Badge variant="secondary">{p.platform}</Badge>
-                          <span className="text-xs text-muted-foreground">{formatRelativeTime(p.posted_at)}</span>
-                          <span className={cn('text-xs font-medium', sentimentStyle(p.sentiment))}>· {p.sentiment}</span>
-                        </div>
-                        <p className="mt-2 text-sm">{p.content}</p>
-                        <div className="mt-3 flex gap-4 text-xs text-muted-foreground">
-                          <span>♥ {p.engagement.likes}</span>
-                          <span>💬 {p.engagement.comments}</span>
-                          <span>↗ {p.engagement.shares}</span>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {detail.socialPosts
+                .filter(p => socialPlatformFilter === 'all' || p.platform.toLowerCase() === socialPlatformFilter)
+                .map((p) => (
+                  <Card key={p.id}>
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="secondary" className="capitalize">{p.platform}</Badge>
+                            <span className="text-xs text-muted-foreground">{formatRelativeTime(p.posted_at)}</span>
+                            <span className={cn('text-xs font-medium', sentimentStyle(p.sentiment))}>· {p.sentiment}</span>
+                          </div>
+                          <p className="mt-2 text-sm line-clamp-3">{p.content}</p>
+                          <div className="mt-3 flex gap-4 text-xs text-muted-foreground">
+                            <span>♥ {p.engagement.likes}</span>
+                            <span>💬 {p.engagement.comments}</span>
+                            <span>↗ {p.engagement.shares}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                ))}
             </div>
           ) : (
             <EmptyState icon={Share2} title="No social activity yet" description="Run a scan to capture social media posts." action={<Button onClick={handleScan} disabled={scanning}>{scanning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Scan now</Button>} />
@@ -533,6 +615,34 @@ export default function () {
         <TabsContent value="pricing" className="space-y-4">
           {detail.pricingItems.length ? (
             <>
+              {/* Current Pricing Tiers Cards */}
+              <div className="grid gap-3 sm:grid-cols-3">
+                {detail.pricingItems.map((p) => (
+                  <Card key={p.id} className="relative">
+                    <CardHeader className="pb-2">
+                      <div className="flex justify-between items-center">
+                        <Badge variant="outline" className="capitalize">{p.tier || 'Standard'}</Badge>
+                        <span className={cn('text-xs font-medium', changeTypeStyle(p.change_type))}>
+                          {changeTypeLabel(p.change_type)}
+                        </span>
+                      </div>
+                      <CardTitle className="text-lg mt-2">{p.product_name}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-2xl font-bold tabular-nums">
+                        {p.price > 0 ? formatCurrency(p.price, p.currency) : 'Custom'}
+                        {p.unit && <span className="text-xs font-normal text-muted-foreground">{p.unit}</span>}
+                      </p>
+                      {p.previous_price ? (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Was {formatCurrency(p.previous_price, p.currency)}
+                        </p>
+                      ) : null}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
               {pricingTrend.length > 1 && (
                 <Card>
                   <CardHeader className="pb-2">
@@ -572,7 +682,7 @@ export default function () {
                         <TableRow key={p.id}>
                           <TableCell className="font-medium">{p.product_name}</TableCell>
                           <TableCell><Badge variant="outline">{p.tier ?? '—'}</Badge></TableCell>
-                          <TableCell className="text-right font-semibold tabular-nums">{formatCurrency(p.price, p.currency)}</TableCell>
+                          <TableCell className="text-right font-semibold tabular-nums">{p.price > 0 ? formatCurrency(p.price, p.currency) : 'Custom'}</TableCell>
                           <TableCell className="text-right tabular-nums text-muted-foreground">{p.previous_price ? formatCurrency(p.previous_price, p.currency) : '—'}</TableCell>
                           <TableCell>
                             <span className={cn('inline-flex items-center gap-1 text-xs font-medium', changeTypeStyle(p.change_type))}>
@@ -596,28 +706,66 @@ export default function () {
 
         {/* Advertising */}
         <TabsContent value="advertising" className="space-y-4">
+          {/* Filters Bar */}
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-muted-foreground font-medium flex items-center gap-1">
+                <Filter className="h-3.5 w-3.5" /> Platform:
+              </span>
+              {['all', 'meta', 'google', 'linkedin'].map((platform) => (
+                <Button
+                  key={platform}
+                  variant={adPlatformFilter === platform ? 'default' : 'outline'}
+                  size="sm"
+                  className="h-7 text-xs capitalize"
+                  onClick={() => setAdPlatformFilter(platform)}
+                >
+                  {platform}
+                </Button>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-1.5 ml-auto">
+              <span className="text-xs text-muted-foreground font-medium">Format:</span>
+              {['all', 'image', 'video', 'carousel'].map((format) => (
+                <Button
+                  key={format}
+                  variant={adFormatFilter === format ? 'default' : 'outline'}
+                  size="sm"
+                  className="h-7 text-xs capitalize"
+                  onClick={() => setAdFormatFilter(format)}
+                >
+                  {format}
+                </Button>
+              ))}
+            </div>
+          </div>
+
           {detail.advertisements.length ? (
             <div className="grid gap-3 sm:grid-cols-2">
-              {detail.advertisements.map((a) => (
-                <Card key={a.id}>
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <Badge variant="secondary">{a.platform}</Badge>
-                        <Badge variant="outline" className="ml-2">{a.ad_type}</Badge>
+              {detail.advertisements
+                .filter(a => adPlatformFilter === 'all' || a.platform.toLowerCase() === adPlatformFilter)
+                .filter(a => adFormatFilter === 'all' || (a.ad_type && a.ad_type.toLowerCase() === adFormatFilter))
+                .map((a) => (
+                  <Card key={a.id}>
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex gap-2">
+                          <Badge variant="secondary" className="capitalize">{a.platform}</Badge>
+                          <Badge variant="outline" className="capitalize">{a.ad_type ?? 'Image'}</Badge>
+                        </div>
+                        <Badge variant={a.status === 'active' ? 'default' : 'secondary'} className={a.status === 'active' ? 'bg-success/15 text-success' : ''}>
+                          {a.status}
+                        </Badge>
                       </div>
-                      <Badge variant={a.status === 'active' ? 'default' : 'secondary'} className={a.status === 'active' ? 'bg-success/15 text-success' : ''}>
-                        {a.status}
-                      </Badge>
-                    </div>
-                    {a.headline && <p className="mt-3 text-sm font-medium">"{a.headline}"</p>}
-                    <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
-                      <span>Budget est. {a.budget_estimate ? formatCurrency(a.budget_estimate) : '—'}</span>
-                      <span>Last seen {formatRelativeTime(a.last_seen_at)}</span>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                      {a.headline && <p className="mt-3 text-sm font-medium">"{a.headline}"</p>}
+                      <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
+                        <span>Budget est. {a.budget_estimate ? formatCurrency(a.budget_estimate) : '—'}</span>
+                        <span>Last seen {formatRelativeTime(a.last_seen_at)}</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
             </div>
           ) : (
             <EmptyState icon={Megaphone} title="No advertising data yet" description="Run a scan to detect ad campaigns." action={<Button onClick={handleScan} disabled={scanning}>{scanning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Scan now</Button>} />
@@ -653,27 +801,57 @@ export default function () {
 
           {detail.insights.length ? (
             <div className="space-y-3">
-              {detail.insights.map((ins) => (
-                <Card key={ins.id} className="animate-fade-in">
-                  <CardContent className="p-5">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/15 text-accent">
-                          <Sparkles className="h-4 w-4" />
+              {detail.insights.map((ins) => {
+                const feedback = feedbackMap[ins.id];
+                return (
+                  <Card key={ins.id} className="animate-fade-in">
+                    <CardContent className="p-5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/15 text-accent">
+                            <Sparkles className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold">{ins.title}</p>
+                            <p className="text-xs text-muted-foreground">{formatRelativeTime(ins.created_at)}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-sm font-semibold">{ins.title}</p>
-                          <p className="text-xs text-muted-foreground">{formatRelativeTime(ins.created_at)}</p>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary" className="capitalize">{ins.insight_type.replace(/_/g, ' ')}</Badge>
+                          {/* Feedback buttons */}
+                          <div className="flex items-center gap-1 ml-2 border-l pl-2">
+                            <Button
+                              variant={feedback === 'helpful' ? 'default' : 'ghost'}
+                              size="icon"
+                              className="h-7 w-7"
+                              onClick={() => {
+                                setFeedbackMap(prev => ({ ...prev, [ins.id]: 'helpful' }));
+                                toast({ title: 'Feedback recorded', description: 'Marked as helpful.' });
+                              }}
+                            >
+                              <ThumbsUp className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant={feedback === 'not_helpful' ? 'destructive' : 'ghost'}
+                              size="icon"
+                              className="h-7 w-7"
+                              onClick={() => {
+                                setFeedbackMap(prev => ({ ...prev, [ins.id]: 'not_helpful' }));
+                                toast({ title: 'Feedback recorded', description: 'Marked as not helpful.' });
+                              }}
+                            >
+                              <ThumbsDown className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
-                      <Badge variant="secondary" className="capitalize">{ins.insight_type.replace(/_/g, ' ')}</Badge>
-                    </div>
-                    <div className="mt-3">
-                      <StructuredInsightContent content={ins.content} recommendations={ins.recommendations} />
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                      <div className="mt-3">
+                        <StructuredInsightContent content={ins.content} recommendations={ins.recommendations} />
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           ) : (
             <EmptyState icon={Sparkles} title="No AI insights yet" description="Generate an analysis above to see AI-powered intelligence." />
@@ -682,28 +860,81 @@ export default function () {
 
         {/* Timeline */}
         <TabsContent value="timeline" className="space-y-4">
+          {/* Pillar & Severity Filters */}
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-muted-foreground font-medium flex items-center gap-1">
+                <Filter className="h-3.5 w-3.5" /> Pillar:
+              </span>
+              {['all', 'website', 'seo', 'social', 'pricing', 'advertising'].map((pillar) => (
+                <Button
+                  key={pillar}
+                  variant={timelinePillarFilter === pillar ? 'default' : 'outline'}
+                  size="sm"
+                  className="h-7 text-xs capitalize"
+                  onClick={() => setTimelinePillarFilter(pillar)}
+                >
+                  {pillar}
+                </Button>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-1.5 ml-auto">
+              <span className="text-xs text-muted-foreground font-medium">Severity:</span>
+              {['all', 'critical', 'high', 'medium', 'low'].map((sev) => (
+                <Button
+                  key={sev}
+                  variant={timelineSeverityFilter === sev ? 'default' : 'outline'}
+                  size="sm"
+                  className="h-7 text-xs capitalize"
+                  onClick={() => setTimelineSeverityFilter(sev)}
+                >
+                  {sev}
+                </Button>
+              ))}
+            </div>
+          </div>
+
           {detail.events.length ? (
             <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Activity Timeline</CardTitle>
-                <CardDescription>All detected changes for {c.name}</CardDescription>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Activity Feed</CardTitle>
+                <CardDescription>Chronological log of changes detected across all pillars</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="relative space-y-4 pl-6">
                   <div className="absolute left-2 top-2 bottom-2 w-px bg-border" />
-                  {detail.events.map((e) => (
-                    <div key={e.id} className="relative">
-                      <div className="absolute -left-[18px] top-1.5 h-3 w-3 rounded-full border-2 border-background bg-accent" />
-                      <div className="rounded-lg border p-3">
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm font-medium">{e.title}</p>
-                          <span className="text-xs text-muted-foreground">{formatDateTime(e.detected_at)}</span>
+                  {detail.events
+                    .filter(e => timelinePillarFilter === 'all' || e.category.toLowerCase() === timelinePillarFilter)
+                    .filter(e => timelineSeverityFilter === 'all' || (e as { severity?: string }).severity?.toLowerCase() === timelineSeverityFilter)
+                    .map((e) => {
+                      const severity = (e as { severity?: string }).severity || 'medium';
+                      return (
+                        <div key={e.id} className="relative">
+                          <div className={cn(
+                            "absolute -left-[18px] top-1.5 h-3 w-3 rounded-full border-2 border-background",
+                            severity === 'critical' || severity === 'high' ? 'bg-destructive' : severity === 'medium' ? 'bg-warning' : 'bg-info'
+                          )} />
+                          <div className="rounded-lg border p-3 hover:bg-card/80 transition-colors">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm font-semibold">{e.title}</p>
+                                <Badge variant="outline" className={cn(
+                                  "text-[10px] py-0 px-1.5 capitalize",
+                                  severity === 'critical' || severity === 'high' ? 'border-destructive/30 text-destructive' : severity === 'medium' ? 'border-warning/30 text-warning' : 'text-muted-foreground'
+                                )}>{severity}</Badge>
+                              </div>
+                              <span className="text-xs text-muted-foreground">{formatDateTime(e.detected_at)}</span>
+                            </div>
+                            {e.description && <p className="mt-1 text-xs text-muted-foreground">{e.description}</p>}
+                            <div className="mt-2 flex items-center justify-between">
+                              <Badge variant="secondary" className="capitalize text-[10px]">{e.category}</Badge>
+                              <span className="text-[10px] text-muted-foreground">{formatRelativeTime(e.detected_at)}</span>
+                            </div>
+                          </div>
                         </div>
-                        {e.description && <p className="mt-1 text-xs text-muted-foreground">{e.description}</p>}
-                        <Badge variant="outline" className="mt-2 capitalize">{e.category}</Badge>
-                      </div>
-                    </div>
-                  ))}
+                      );
+                    })}
                 </div>
               </CardContent>
             </Card>

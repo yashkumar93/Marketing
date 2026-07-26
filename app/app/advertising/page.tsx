@@ -30,12 +30,12 @@ import {
 } from 'recharts';
 import { ChartTooltip } from '@/components/ChartTooltip';
 import { formatCurrency, formatRelativeTime } from '@/lib/format';
-import type { Advertisement, Competitor, TechStackSnapshot } from '@/types';
+import type { AdCreative, Competitor, TechStackSnapshot } from '@/types';
 
 export default function () {
   const { competitors, loading: compsLoading } = useCompetitorList();
   const [filter, setFilter] = useState('all');
-  const [ads, setAds] = useState<Advertisement[]>([]);
+  const [ads, setAds] = useState<AdCreative[]>([]);
   const [snapshots, setSnapshots] = useState<TechStackSnapshot[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -89,7 +89,6 @@ export default function () {
   }, [snapshots, competitorMap]);
 
   const activeCount = ads.filter((a) => a.status === 'active').length;
-  const totalBudget = ads.reduce((sum, a) => sum + (a.budget_estimate ?? 0), 0);
 
 
 
@@ -121,7 +120,7 @@ export default function () {
           <div className="grid gap-4 sm:grid-cols-3">
             <Card><CardContent className="p-5"><p className="text-sm text-muted-foreground">Total campaigns</p><p className="mt-2 text-3xl font-bold tabular-nums">{ads.length}</p></CardContent></Card>
             <Card><CardContent className="p-5"><p className="text-sm text-muted-foreground">Active campaigns</p><p className="mt-2 text-3xl font-bold tabular-nums text-success">{activeCount}</p></CardContent></Card>
-            <Card><CardContent className="p-5"><p className="text-sm text-muted-foreground">Est. total spend</p><p className="mt-2 text-3xl font-bold tabular-nums">{formatCurrency(totalBudget)}</p></CardContent></Card>
+            <Card><CardContent className="p-5"><p className="text-sm text-muted-foreground">Active Ad Networks</p><p className="mt-2 text-3xl font-bold tabular-nums">{activeAdPixels.length}</p></CardContent></Card>
           </div>
 
           {activeAdPixels.length > 0 && (
@@ -172,17 +171,22 @@ export default function () {
                   <div className="flex items-start justify-between">
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge variant="secondary">{a.platform}</Badge>
-                      <Badge variant="outline" className="ml-2">{a.ad_type}</Badge>
-
+                      <Badge variant="outline" className="ml-2">{a.format}</Badge>
                     </div>
                     <Badge variant={a.status === 'active' ? 'default' : 'secondary'} className={a.status === 'active' ? 'bg-success/15 text-success' : ''}>
                       {a.status}
                     </Badge>
                   </div>
+                  {a.creative_url && (
+                    <div className="mt-3 aspect-video bg-muted rounded overflow-hidden">
+                      <img src={a.creative_url} className="w-full h-full object-cover" />
+                    </div>
+                  )}
                   {a.headline && <p className="mt-3 text-sm font-medium">"{a.headline}"</p>}
+                  {a.body_text && <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{a.body_text}</p>}
                   <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
                     <span>{competitorMap[a.competitor_id]?.name ?? 'Unknown'}</span>
-                    <span>Budget est. {a.budget_estimate ? formatCurrency(a.budget_estimate) : '—'}</span>
+                    <span>Est. {a.impressions_estimate ?? '—'} impressions</span>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">Last seen {formatRelativeTime(a.last_seen_at)}</p>
                 </CardContent>

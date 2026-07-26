@@ -120,6 +120,22 @@ export default function () {
 
 
 
+
+  const topHashtags = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const p of posts) {
+      if (p.theme_tags) {
+        for (const tag of p.theme_tags) {
+          counts[tag] = (counts[tag] || 0) + 1;
+        }
+      }
+    }
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([tag, count]) => ({ tag, count }));
+  }, [posts]);
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -146,7 +162,28 @@ export default function () {
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-4">
-            <Card><CardContent className="p-5"><p className="text-sm text-muted-foreground">Profiles tracked</p><p className="mt-2 text-3xl font-bold tabular-nums">{profiles.length}</p></CardContent></Card>
+  
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Top Themes</CardTitle>
+                <CardDescription>Most used hashtags</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {topHashtags.length > 0 ? (
+                    topHashtags.map((t) => (
+                      <Badge key={t.tag} variant="secondary" className="text-xs">
+                        #{t.tag} <span className="ml-1 text-muted-foreground opacity-70">{t.count}</span>
+                      </Badge>
+                    ))
+                  ) : (
+                    <span className="text-sm text-muted-foreground">No hashtags detected.</span>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+          <Card><CardContent className="p-5"><p className="text-sm text-muted-foreground">Profiles tracked</p><p className="mt-2 text-3xl font-bold tabular-nums">{profiles.length}</p></CardContent></Card>
             <Card><CardContent className="p-5"><p className="text-sm text-muted-foreground">Total followers</p><p className="mt-2 text-3xl font-bold tabular-nums">{profileMetrics.followers.toLocaleString()}</p></CardContent></Card>
             <Card><CardContent className="p-5"><p className="text-sm text-muted-foreground">Posts captured</p><p className="mt-2 text-3xl font-bold tabular-nums">{posts.length}</p></CardContent></Card>
             <Card><CardContent className="p-5"><div className="flex items-center gap-1.5 text-sm text-muted-foreground"><Heart className="h-4 w-4" /> Total engagements</div><p className="mt-2 text-3xl font-bold tabular-nums">{(totalEngagement.likes + totalEngagement.comments + totalEngagement.shares).toLocaleString()}</p></CardContent></Card>
@@ -216,10 +253,15 @@ export default function () {
                         <span className={cn('text-xs font-medium', sentimentStyle(p.sentiment))}>· {p.sentiment}</span>
                       </div>
                       <p className="mt-1.5 text-sm text-foreground/90">{p.content}</p>
-                      <div className="mt-2 flex gap-4 text-xs text-muted-foreground">
+                      <div className="mt-2 flex gap-4 text-xs text-muted-foreground items-center">
                         <span className="flex items-center gap-1"><Heart className="h-3 w-3" /> {p.engagement.likes}</span>
                         <span className="flex items-center gap-1"><MessageCircle className="h-3 w-3" /> {p.engagement.comments}</span>
                         <span className="flex items-center gap-1"><Repeat2 className="h-3 w-3" /> {p.engagement.shares}</span>
+                        {p.engagement_rate != null && p.engagement_rate > 0 && (
+                          <span className="flex items-center ml-2 pl-4 border-l border-border font-medium text-foreground">
+                            {Number(p.engagement_rate * 100).toFixed(1)}% ER
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
